@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>終極人生使用說明書</title>
+    
+    <!-- 引入 Tailwind CSS (版面樣式) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 引入 React 與 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- 引入 Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 引入 Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* 隱藏列印時不必要的元素 */
+        @media print {
+            body { background-color: white !important; }
+            .print\:hidden { display: none !important; }
+            .print\:shadow-none { box-shadow: none !important; }
+            .print\:border-none { border: none !important; }
+            .print\:p-0 { padding: 0 !important; }
+            .print\:m-0 { margin: 0 !important; }
+            .print\:max-w-full { max-width: 100% !important; }
+            .print\:block { display: block !important; }
+            .print\:h-auto { height: auto !important; }
+            .print\:overflow-visible { overflow: visible !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div style="text-align: center; margin-top: 20vh; font-family: sans-serif; color: #64748b;">
+            <i class="fas fa-spinner fa-spin fa-2x mb-4"></i>
+            <p>系統載入中，請稍候...</p>
+        </div>
+    </div>
+
+    <script type="text/babel" data-presets="react">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const QUESTIONS = {
+          values: [
+            { id: 'v1', label: '1. 你有尊敬的人嗎？他是誰？為什麼尊敬他？喜歡他什麼地方？', placeholder: '例如：我尊敬...因為他把人生角色扮演得很好...' },
+            { id: 'v2', label: '2. 你人生中最活躍的時期是什麼時候？影響你很大的事情是什麼？你發生了什麼改變？', placeholder: '例如：大二時...讓我意識到...' },
+            { id: 'v3', label: '3. 你覺得現在這個社會有什麼不足的地方？有什麼需要改善的地方？', placeholder: '例如：我覺得社會充滿對立，可以多一點包容...' },
+            { id: 'v4', label: '4. 在你朋友眼裡，你是一個在乎什麼東西的人？', placeholder: '例如：在朋友眼裡，我很在乎自己開不開心...' },
+            { id: 'v5', label: '5. 你不希望你的朋友給你什麼樣的建議？', placeholder: '例如：我不希望朋友套用他們的價值觀在我身上...' }
+          ],
+          talents: [
+            { id: 't1', label: '1. 目前你人生中最充實跟順利的時期是什麼時候？那段時間你在做什麼？', placeholder: '例如：在某公司實習的時候...' },
+            { id: 't2', label: '2. 最近一次你覺得不耐煩的事情是什麼？（對「別人」不耐煩）', placeholder: '例如：我容易對講話慢、沒重點的人不耐煩...' },
+            { id: 't3', label: '3. 問身邊的人自己擅長什麼？', placeholder: '例如：具有美感、擅長規劃、邏輯好...' },
+            { id: 't4', label: '4. 放棄現在的工作，你特別想做的事情是什麼？', placeholder: '例如：想去學習健身、語言、或者去旅行...' },
+            { id: 't5', label: '5. 到目前為止，你做成功的事情是什麼？', placeholder: '例如：成功帶領過一個團隊、考上研究所...' }
+          ],
+          dreams: [
+            { id: 'd1', label: '1. 有什麼事情就算花錢，你也願意去了解、去學習？', placeholder: '例如：我願意花錢在自我成長、上課、運動指導...' },
+            { id: 'd2', label: '2. 你的書架上有什麼內容的書？', placeholder: '例如：心理勵志、行銷管理、語言學習...' },
+            { id: 'd3', label: '3. 有沒有什麼內容，給你很大的幫助？', placeholder: '例如：《做自己的生命設計師》這本書啟發了我...' },
+            { id: 'd4', label: '4. 你有特別想要感謝的人和事嗎？為什麼想特別感謝他？', placeholder: '例如：感謝媽媽的支持，感謝前老闆的帶領...' },
+            { id: 'd5', label: '5. 你對這個世界有什麼不滿和憤怒的嗎？或者你希望這個世界是什麼樣子？', placeholder: '例如：希望世界不要有霸凌和歧視，大家專注於自己...' }
+          ]
+        };
+
+        const PROMPT_TEMPLATES = {
+          aiValues: (answers) => `你現在是一名生涯教練，你要針對以下我提出的五個價值觀，統整並梳理成一個核心價值觀，並告訴我，我的一個核心價值觀是什麼？(請用繁體中文回覆我)\n\n第一個價值觀：${answers.v1 || ''}\n\n第二個價值觀：${answers.v2 || ''}\n\n第三個價值觀：${answers.v3 || ''}\n\n第四個價值觀：${answers.v4 || ''}\n\n第五個價值觀：${answers.v5 || ''}`,
+          
+          aiManual: (answers) => `你現在是一名蓋洛普優勢認證教練，你要針對以下我提出的五個自我觀察與優勢，統整並梳理成一個我的使用說明書，並告訴我，在我的使用說明書裡，我最擅長做什麼？(請用繁體中文回答我)\n\n個人使用說明書架構如下，包含四個段落含結語：\n一、核心優勢(我的三大核心優勢)\n二、發展機遇\n三、最擅長的事情\n結語\n\n五個自我觀察與優勢如下：\n\n第一個自我觀察與優勢：${answers.t1 || ''}\n\n第二個自我觀察與優勢：${answers.t2 || ''}\n\n第三個自我觀察與優勢：${answers.t3 || ''}\n\n第四個自我觀察與優勢：${answers.t4 || ''}\n\n第五個自我觀察與優勢：${answers.t5 || ''}`,
+          
+          aiJobs: (results) => `你現在是一名蓋洛普優勢認證教練兼職涯教練，你要針對以下我提供的個人使用說明書(天賦與才能)，統整並總結出適合我發展的職業，並且明確告訴我：在不違背我的價值觀為前提下，你會建議我從事哪10種職業與職位，更容易取得成功？(請用繁體中文回答我)\n\n【天賦與才能】\n${results.aiManual || '(請先完成前面的步驟)'}\n\n【價值觀】\n${results.aiValues || '(請先完成前面的步驟)'}`,
+          
+          aiDreams: (answers) => `你現在是一名人生教練，你要針對以下我提出的五個自我觀察與夢想，統整並總結出3個關鍵詞，並引導出我內心真心渴望的夢想，並且明確告訴我：如果有一天，我不需要考量金錢，我做什麼事或工作會讓我感到人生充滿熱情？(請用繁體中文回答我)\n\n第一個自我觀察與夢想：${answers.d1 || ''}\n\n第二個自我觀察與夢想：${answers.d2 || ''}\n\n第三個自我觀察與夢想：${answers.d3 || ''}\n\n第四個自我觀察與夢想：${answers.d4 || ''}\n\n第五個自我觀察與夢想：${answers.d5 || ''}`,
+          
+          aiBusiness: (results) => `你現在是一名商業教練，你要針對以下我提供的價值觀、個人使用說明書(天賦與才能)、夢想，統整並總結出適合我發展的事業，並且明確告訴我：以整個生涯作為跨度，你會建議我發展哪三種事業，更容易成功？(請用繁體中文回答我)\n\n【價值觀】\n${results.aiValues || '(請先完成前面的步驟)'}\n\n【天賦與才能】\n${results.aiManual || '(請先完成前面的步驟)'}\n\n【夢想】\n${results.aiDreams || '(請先完成前面的步驟)'}`
+        };
+
+        const STEPS = [
+          { id: 0, title: '開始說明', icon: 'fas fa-book-open' },
+          { id: 1, title: 'Q1-5: 價值觀', icon: 'fas fa-handshake-angle' },
+          { id: 2, title: 'Q6-10: 天賦才能', icon: 'fas fa-wand-magic-sparkles' },
+          { id: 3, title: 'Q11-15: 夢想', icon: 'fas fa-bullseye' },
+          { id: 4, title: 'AI 分析: 核心價值', icon: 'fas fa-message' },
+          { id: 5, title: 'AI 分析: 使用說明書', icon: 'fas fa-message' },
+          { id: 6, title: 'AI 分析: 職業建議', icon: 'fas fa-briefcase' },
+          { id: 7, title: 'AI 分析: 可能志業', icon: 'fas fa-bullseye' },
+          { id: 8, title: 'AI 分析: 事業建議', icon: 'fas fa-bullseye' },
+          { id: 9, title: '最終報告', icon: 'fas fa-check-circle' }
+        ];
+
+        // Custom hook for debouncing
+        function useDebounce(value, delay) {
+          const [debouncedValue, setDebouncedValue] = useState(value);
+          useEffect(() => {
+            const handler = setTimeout(() => {
+              setDebouncedValue(value);
+            }, delay);
+            return () => {
+              clearTimeout(handler);
+            };
+          }, [value, delay]);
+          return debouncedValue;
+        }
+
+        function App() {
+          const [supabaseClient, setSupabaseClient] = useState(null);
+          const [user, setUser] = useState(null);
+          const [dataLoaded, setDataLoaded] = useState(false);
+
+          const [answers, setAnswers] = useState({});
+          const [gptResults, setGptResults] = useState({ aiValues: '', aiManual: '', aiJobs: '', aiDreams: '', aiBusiness: '' });
+          const [currentStep, setCurrentStep] = useState(0);
+
+          const debouncedAnswers = useDebounce(answers, 1000);
+          const debouncedGptResults = useDebounce(gptResults, 1000);
+          const debouncedStep = useDebounce(currentStep, 1000);
+
+          const [copiedStates, setCopiedStates] = useState({});
+          const [showResetModal, setShowResetModal] = useState(false);
+          const [showSaveToast, setShowSaveToast] = useState(false);
+          
+          const [isGeneratingAI, setIsGeneratingAI] = useState({});
+          const [apiError, setApiError] = useState('');
+
+          // 1. 初始化 Supabase 客戶端
+          useEffect(() => {
+            const initSupabase = async () => {
+              try {
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                  const config = await res.json();
+                  if (config.supabaseUrl && config.supabaseAnonKey) {
+                    const client = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                    setSupabaseClient(client);
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to load Supabase config:", e);
+              }
+            };
+            initSupabase();
+          }, []);
+
+          // 2. 監聽登入狀態
+          useEffect(() => {
+            if (!supabaseClient) return;
+            
+            // 取得當前 session
+            supabaseClient.auth.getSession().then(({ data: { session } }) => {
+              setUser(session?.user || null);
+            });
+
+            // 監聽變化
+            const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+              setUser(session?.user || null);
+              if (!session?.user) {
+                // 登出時清空資料
+                setAnswers({});
+                setGptResults({ aiValues: '', aiManual: '', aiJobs: '', aiDreams: '', aiBusiness: '' });
+                setCurrentStep(0);
+                setDataLoaded(false);
+              }
+            });
+
+            return () => subscription.unsubscribe();
+          }, [supabaseClient]);
+
+          // 3. 載入雲端資料
+          useEffect(() => {
+            const loadData = async () => {
+              if (user && supabaseClient && !dataLoaded) {
+                try {
+                  const { data, error } = await supabaseClient
+                    .from('user_progress')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+                  
+                  if (data) {
+                    if (data.answers) setAnswers(data.answers);
+                    if (data.gpt_results) setGptResults(data.gpt_results);
+                    if (data.current_step !== undefined) setCurrentStep(data.current_step);
+                  }
+                  setDataLoaded(true);
+                } catch (e) {
+                  console.error("載入資料失敗", e);
+                  setDataLoaded(true); // 即使失敗也設為 true 避免無限迴圈
+                }
+              }
+            };
+            loadData();
+          }, [user, supabaseClient, dataLoaded]);
+
+          // 4. 自動儲存至雲端
+          useEffect(() => {
+            const saveData = async () => {
+              if (user && supabaseClient && dataLoaded) {
+                try {
+                  const { error } = await supabaseClient
+                    .from('user_progress')
+                    .upsert({
+                      user_id: user.id,
+                      answers: debouncedAnswers,
+                      gpt_results: debouncedGptResults,
+                      current_step: debouncedStep,
+                      updated_at: new Date().toISOString()
+                    }, { onConflict: 'user_id' });
+                  
+                  if (!error) {
+                    setShowSaveToast(true);
+                    setTimeout(() => setShowSaveToast(false), 2000);
+                  }
+                } catch (e) {
+                  console.warn("Supabase 儲存失敗", e);
+                }
+              }
+            };
+            
+            // 只有當資料不為空時才儲存，避免一登入就被空資料蓋過
+            if (Object.keys(debouncedAnswers).length > 0 || debouncedStep > 0) {
+              saveData();
+            }
+          }, [debouncedAnswers, debouncedGptResults, debouncedStep, user, supabaseClient, dataLoaded]);
+
+          const handleLogin = async () => {
+            if (!supabaseClient) return;
+            await supabaseClient.auth.signInWithOAuth({
+              provider: 'google',
+              options: { redirectTo: window.location.origin }
+            });
+          };
+
+          const handleLogout = async () => {
+            if (!supabaseClient) return;
+            await supabaseClient.auth.signOut();
+          };
+
+          const handleAnswerChange = (id, value) => {
+            setAnswers(prev => ({ ...prev, [id]: value }));
+          };
+
+          const handleResultChange = (stepId, value) => {
+            setGptResults(prev => ({ ...prev, [stepId]: value }));
+          };
+
+          const confirmReset = async () => {
+            setAnswers({});
+            setGptResults({ aiValues: '', aiManual: '', aiJobs: '', aiDreams: '', aiBusiness: '' });
+            setCurrentStep(0);
+            
+            if (user && supabaseClient) {
+              await supabaseClient
+                .from('user_progress')
+                .upsert({
+                  user_id: user.id,
+                  answers: {},
+                  gpt_results: { aiValues: '', aiManual: '', aiJobs: '', aiDreams: '', aiBusiness: '' },
+                  current_step: 0,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            }
+            setShowResetModal(false);
+          };
+
+          const copyToClipboard = async (text, id) => {
+            try {
+              const textArea = document.createElement("textarea");
+              textArea.value = text;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand("copy");
+              document.body.removeChild(textArea);
+              
+              setCopiedStates({ ...copiedStates, [id]: true });
+              setTimeout(() => {
+                setCopiedStates({ ...copiedStates, [id]: false });
+              }, 2000);
+            } catch (err) {
+              console.error('Failed to copy text: ', err);
+            }
+          };
+
+          const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+          const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
+
+          const downloadWord = () => {
+            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>人生使用說明書</title></head><body>";
+            const footer = "</body></html>";
+            const content = `
+              <div style="font-family: sans-serif; max-width: 800px; margin: 0 auto;">
+                <h1 style="text-align: center; color: #065f46; border-bottom: 2px solid #a7f3d0; padding-bottom: 10px;">《終極人生使用說明書》</h1>
+                <h2 style="color: #047857; margin-top: 20px;">一、核心價值觀</h2>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${gptResults.aiValues || '尚未填寫'}</p>
+                <h2 style="color: #1d4ed8; margin-top: 20px;">二、個人使用說明書</h2>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${gptResults.aiManual || '尚未填寫'}</p>
+                <h2 style="color: #7e22ce; margin-top: 20px;">三、適合的 10 種職業建議</h2>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${gptResults.aiJobs || '尚未填寫'}</p>
+                <h2 style="color: #b45309; margin-top: 20px;">四、你的可能志業</h2>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${gptResults.aiDreams || '尚未填寫'}</p>
+                <h2 style="color: #be123c; margin-top: 20px;">五、相對容易成功的 3 種事業</h2>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${gptResults.aiBusiness || '尚未填寫'}</p>
+              </div>
+            `;
+            const sourceHTML = header + content + footer;
+            const blob = new Blob(['\ufeff', sourceHTML], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '終極人生使用說明書.doc';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
+          const downloadPDF = () => {
+            window.print();
+          };
+
+          // 呼叫 Edge Function 進行 AI 生成
+          const generateAI = async (prompt, gptResultKey) => {
+            if (!user) {
+              alert('請先登入 Google 帳號，以確保您的生成結果能夠儲存！');
+              return;
+            }
+
+            setIsGeneratingAI({ ...isGeneratingAI, [gptResultKey]: true });
+            setApiError('');
+            // 清空當前欄位，準備填入新內容
+            setGptResults(prev => ({ ...prev, [gptResultKey]: '' }));
+
+            try {
+              const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+              });
+
+              if (!response.ok) {
+                throw new Error(`系統發生錯誤 (${response.status})，請稍後再試。`);
+              }
+
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder("utf-8");
+              let done = false;
+
+              while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                if (value) {
+                  const chunk = decoder.decode(value, { stream: true });
+                  
+                  // 解析 SSE (Server-Sent Events)
+                  const lines = chunk.split('\n');
+                  for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                      const dataStr = line.slice(6);
+                      if (dataStr === '[DONE]') {
+                        done = true;
+                        break;
+                      }
+                      try {
+                        const data = JSON.parse(dataStr);
+                        if (data.type === 'content_block_delta' && data.delta && data.delta.text) {
+                          setGptResults(prev => ({ 
+                            ...prev, 
+                            [gptResultKey]: prev[gptResultKey] + data.delta.text 
+                          }));
+                        }
+                      } catch (e) {
+                        // ignore parse errors for partial chunks
+                      }
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("AI Generation error:", err);
+              setApiError(err.message || '連線逾時或伺服器錯誤，請檢查網路狀態或重新整理。');
+            } finally {
+              setIsGeneratingAI({ ...isGeneratingAI, [gptResultKey]: false });
+            }
+          };
+
+          const renderIntro = () => (
+            <div className="flex flex-col items-center justify-center text-center space-y-8 py-12 animate-in fade-in zoom-in duration-500">
+              <div className="bg-emerald-100 p-6 rounded-full text-emerald-600 mb-4 shadow-sm relative">
+                <i className="fas fa-book-open text-6xl"></i>
+              </div>
+              <h1 className="text-4xl font-bold text-slate-800 tracking-tight">終極人生使用說明書</h1>
+              <p className="text-lg text-slate-600 max-w-2xl leading-relaxed">
+                這是一個引導式的自我探索工具。我們將透過 15 個深度問題，結合 AI 分析能力，為您梳理出個人的核心價值觀、天賦才能、職業建議與未來事業方向。所有進度將自動儲存於您的雲端帳號中。
+              </p>
+              
+              {!user ? (
+                <div className="bg-amber-50 text-amber-700 px-6 py-4 rounded-xl border border-amber-200 flex flex-col items-center max-w-xl w-full">
+                  <i className="fas fa-cloud-upload-alt text-2xl mb-2"></i> 
+                  <p className="mb-3 font-medium">請登入 Google 以儲存您的進度</p>
+                  <button onClick={handleLogin} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold py-2 px-6 rounded-lg shadow-sm flex items-center transition-colors">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-2" />
+                    使用 Google 登入
+                  </button>
+                </div>
+              ) : (
+                Object.keys(answers).length > 0 && (
+                  <div className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl border border-emerald-200 text-sm flex items-center">
+                    <i className="fas fa-cloud-check mr-2"></i> 系統已從雲端載入您的進度，您可以隨時接續填寫。
+                  </div>
+                )
+              )}
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-left w-full max-w-xl">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center">
+                  <i className="fas fa-bullseye text-emerald-500 mr-2 text-xl"></i> 完成後您將獲得：
+                </h3>
+                <ul className="space-y-3 text-slate-600">
+                  <li className="flex items-center"><i className="fas fa-check-circle text-emerald-400 mr-2"></i> 您的核心價值觀</li>
+                  <li className="flex items-center"><i className="fas fa-check-circle text-emerald-400 mr-2"></i> 專屬的個人使用說明書（天賦才能）</li>
+                  <li className="flex items-center"><i className="fas fa-check-circle text-emerald-400 mr-2"></i> 適合您發展的 10 種職業建議</li>
+                  <li className="flex items-center"><i className="fas fa-check-circle text-emerald-400 mr-2"></i> 可能點燃您熱情的可能志業</li>
+                  <li className="flex items-center"><i className="fas fa-check-circle text-emerald-400 mr-2"></i> 相對容易成功的 3 種事業參考</li>
+                </ul>
+              </div>
+
+              <button 
+                onClick={nextStep}
+                className="mt-8 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-medium text-lg transition-all transform hover:scale-105 shadow-lg flex items-center"
+              >
+                {Object.keys(answers).length > 0 ? '接續填寫' : '開始探索自我'} <i className="fas fa-chevron-right ml-2"></i>
+              </button>
+            </div>
+          );
+
+          const renderQuestionsStep = (sectionId, questions, IconClass, colorClass, title, subtitle) => {
+            return (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-slate-800">{title}</h2>
+                  <p className="text-slate-500 mt-2">{subtitle}</p>
+                </div>
+
+                <section className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
+                  <div className="flex items-center mb-6">
+                    <div className={`p-4 rounded-xl mr-4 flex items-center justify-center ${colorClass}`}>
+                      <i className={`${IconClass} text-2xl`}></i>
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-800">請盡可能詳細填寫</h3>
+                  </div>
+                  <div className="space-y-8">
+                    {questions.map(q => (
+                      <div key={q.id} className="space-y-3">
+                        <label className="block text-slate-700 font-medium leading-relaxed">{q.label}</label>
+                        <textarea 
+                          value={answers[q.id] || ''}
+                          onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                          placeholder={q.placeholder}
+                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-y min-h-[120px] text-slate-700"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={prevStep} className="text-slate-500 hover:text-slate-800 px-6 py-3 font-medium transition-colors flex items-center bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50">
+                    <i className="fas fa-chevron-left mr-2"></i> 上一頁
+                  </button>
+                  <button onClick={nextStep} className="bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-medium transition-all flex items-center shadow-md">
+                    下一頁 <i className="fas fa-chevron-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+            );
+          };
+
+          const renderAIInteraction = (stepId, title, description, promptContent, gptResultKey) => {
+            const isLoading = isGeneratingAI[gptResultKey];
+
+            return (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 max-w-4xl mx-auto">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-slate-800">{title}</h2>
+                  <p className="text-slate-500 mt-2">{description}</p>
+                </div>
+
+                <div className="bg-slate-800 rounded-3xl overflow-hidden shadow-xl border border-slate-700">
+                  <div className="bg-slate-900 px-6 py-4 flex justify-between items-center border-b border-slate-700">
+                    <div className="flex items-center text-slate-300">
+                      <i className="fas fa-message mr-2"></i>
+                      <span className="font-medium">系統自動生成的 AI 提示詞</span>
+                    </div>
+                    <button 
+                      onClick={() => copyToClipboard(promptContent, stepId)}
+                      className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copiedStates[stepId] ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                    >
+                      {copiedStates[stepId] ? <><i className="fas fa-check-circle mr-2"></i>已複製</> : <><i className="fas fa-copy mr-2"></i>一鍵複製</>}
+                    </button>
+                  </div>
+                  <div className="p-6">
+                    <div className="bg-slate-900/50 p-6 rounded-xl font-mono text-sm text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-[300px] overflow-y-auto border border-slate-700/50">
+                      {promptContent}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center py-2">
+                  <button 
+                    onClick={() => generateAI(promptContent, gptResultKey)}
+                    disabled={isLoading}
+                    className={`mt-4 px-8 py-4 rounded-full font-bold text-lg shadow-lg flex items-center transition-all transform hover:scale-105 ${isLoading ? 'bg-slate-400 cursor-not-allowed text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white'}`}
+                  >
+                    {isLoading ? (
+                      <><i className="fas fa-spinner fa-spin mr-2"></i> AI 生成中...</>
+                    ) : (
+                      <><i className="fas fa-wand-magic-sparkles mr-2"></i> ✨ 直接 AI 生成</>
+                    )}
+                  </button>
+
+                  <div className="w-1 h-8 bg-slate-200 border-dashed border-l-2 mt-4"></div>
+                  <div className="text-sm text-slate-500 bg-slate-100 px-4 py-1 rounded-full my-2">或手動貼給外部 ChatGPT，再將回答貼到下方</div>
+                  <div className="w-1 h-8 bg-slate-200 border-dashed border-l-2"></div>
+                </div>
+
+                {apiError && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 flex items-center">
+                    <i className="fas fa-exclamation-circle mr-2"></i> {apiError}
+                  </div>
+                )}
+
+                <div className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 relative">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-t-3xl"></div>
+                  <label className="block text-slate-800 font-semibold text-lg mb-4 flex items-center">
+                    <i className="fas fa-robot text-emerald-500 mr-2 text-xl"></i> AI 分析結果：
+                  </label>
+                  <textarea 
+                    value={gptResults[gptResultKey]}
+                    onChange={(e) => handleResultChange(gptResultKey, e.target.value)}
+                    placeholder="AI 的分析結果將顯示在此處..."
+                    className="w-full p-6 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-y min-h-[250px] text-slate-700 leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex justify-between pt-6">
+                  <button onClick={prevStep} className="text-slate-500 hover:text-slate-800 px-6 py-3 font-medium transition-colors flex items-center bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50">
+                    <i className="fas fa-chevron-left mr-2"></i> 上一步
+                  </button>
+                  <button 
+                    onClick={nextStep} 
+                    className={`px-8 py-3 rounded-xl font-medium transition-all flex items-center ${gptResults[gptResultKey] ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md' : 'bg-slate-800 hover:bg-slate-900 text-white shadow-md'}`}
+                  >
+                    {gptResults[gptResultKey] ? '繼續下一步' : '跳過 (前往下一步)'} <i className="fas fa-chevron-right ml-2"></i>
+                  </button>
+                </div>
+              </div>
+            );
+          };
+
+          const renderFinalReport = () => {
+            return (
+              <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-700 print:max-w-full print:m-0 print:p-0">
+                <div className="text-center mb-12 print:hidden">
+                  <div className="inline-flex items-center justify-center bg-emerald-100 p-4 rounded-full text-emerald-600 mb-6">
+                    <i className="fas fa-check-circle text-5xl"></i>
+                  </div>
+                  <h2 className="text-4xl font-bold text-slate-800 mb-4">您的專屬人生使用說明書</h2>
+                  <p className="text-slate-500">所有資料皆已自動保存在雲端。您可以選擇下載檔案或複製全文保存。</p>
+                </div>
+
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden print:shadow-none print:border-none print:rounded-none">
+                  <div className="bg-slate-800 px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
+                    <h3 className="text-xl font-semibold text-white flex items-center">
+                      <i className="fas fa-book-open mr-3"></i> 終極報告
+                    </h3>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button 
+                        onClick={downloadPDF}
+                        className="flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-rose-600 hover:bg-rose-700 text-white"
+                      >
+                        <i className="fas fa-print mr-2"></i> 另存 PDF
+                      </button>
+                      <button 
+                        onClick={downloadWord}
+                        className="flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <i className="fas fa-file-alt mr-2"></i> 下載 Word
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const text = `《終極人生使用說明書》\n\n【核心價值觀】\n${gptResults.aiValues || '尚未填寫'}\n\n【個人使用說明書】\n${gptResults.aiManual || '尚未填寫'}\n\n【適合的10種職業建議】\n${gptResults.aiJobs || '尚未填寫'}\n\n【可能志業】\n${gptResults.aiDreams || '尚未填寫'}\n\n【3種事業建議】\n${gptResults.aiBusiness || '尚未填寫'}`;
+                          copyToClipboard(text, 'final');
+                        }}
+                        className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copiedStates['final'] ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                      >
+                        {copiedStates['final'] ? <><i className="fas fa-check-circle mr-2"></i>已複製</> : <><i className="fas fa-copy mr-2"></i>複製全文</>}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-8 space-y-10 text-slate-700 leading-relaxed print:p-0">
+                    <div className="hidden print:block text-center border-b-2 border-emerald-500 pb-6 mb-8">
+                      <h1 className="text-4xl font-bold text-slate-800">《終極人生使用說明書》</h1>
+                    </div>
+                    
+                    <section>
+                      <h4 className="text-2xl font-bold text-emerald-700 border-b-2 border-emerald-100 pb-3 mb-4 flex items-center">
+                        <i className="fas fa-handshake-angle mr-2 text-2xl"></i> 一、核心價值觀
+                      </h4>
+                      <div className="whitespace-pre-wrap">{gptResults.aiValues || <span className="text-slate-400 italic">尚未進行此步驟的 AI 分析</span>}</div>
+                    </section>
+
+                    <section>
+                      <h4 className="text-2xl font-bold text-blue-700 border-b-2 border-blue-100 pb-3 mb-4 flex items-center">
+                        <i className="fas fa-wand-magic-sparkles mr-2 text-2xl"></i> 二、個人使用說明書
+                      </h4>
+                      <div className="whitespace-pre-wrap">{gptResults.aiManual || <span className="text-slate-400 italic">尚未進行此步驟的 AI 分析</span>}</div>
+                    </section>
+
+                    <section>
+                      <h4 className="text-2xl font-bold text-purple-700 border-b-2 border-purple-100 pb-3 mb-4 flex items-center">
+                        <i className="fas fa-briefcase mr-2 text-2xl"></i> 三、適合的 10 種職業建議
+                      </h4>
+                      <div className="whitespace-pre-wrap">{gptResults.aiJobs || <span className="text-slate-400 italic">尚未進行此步驟的 AI 分析</span>}</div>
+                    </section>
+
+                    <section>
+                      <h4 className="text-2xl font-bold text-amber-700 border-b-2 border-amber-100 pb-3 mb-4 flex items-center">
+                        <i className="fas fa-bullseye mr-2 text-2xl"></i> 四、你的可能志業
+                      </h4>
+                      <div className="whitespace-pre-wrap">{gptResults.aiDreams || <span className="text-slate-400 italic">尚未進行此步驟的 AI 分析</span>}</div>
+                    </section>
+
+                    <section>
+                      <h4 className="text-2xl font-bold text-rose-700 border-b-2 border-rose-100 pb-3 mb-4 flex items-center">
+                        <i className="fas fa-bullseye mr-2 text-2xl"></i> 五、相對容易成功的 3 種事業
+                      </h4>
+                      <div className="whitespace-pre-wrap">{gptResults.aiBusiness || <span className="text-slate-400 italic">尚未進行此步驟的 AI 分析</span>}</div>
+                    </section>
+
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900 print:bg-white">
+              
+              <div className="w-80 bg-white border-r border-slate-200 hidden md:flex flex-col sticky top-0 h-screen overflow-y-auto print:hidden">
+                <div className="p-8 pb-4">
+                  <div className="flex items-center text-emerald-600 mb-2">
+                    <i className="fas fa-book-open text-3xl mr-3"></i>
+                    <h1 className="text-xl font-bold tracking-tight">人生設計指南</h1>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium tracking-wider uppercase mt-6">自由探索進度 (雲端儲存)</p>
+                </div>
+
+                {/* 登入區塊 */}
+                <div className="px-6 mb-4">
+                  {user ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center">
+                      {user.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt="avatar" className="w-12 h-12 rounded-full mb-2 border-2 border-white shadow-sm" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full mb-2 bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xl">
+                          {user.email?.[0].toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-slate-700 truncate w-full text-center">
+                        {user.user_metadata?.full_name || user.email}
+                      </span>
+                      <button onClick={handleLogout} className="mt-3 text-xs text-slate-500 hover:text-rose-500 transition-colors">
+                        <i className="fas fa-sign-out-alt mr-1"></i> 登出
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col items-center">
+                      <p className="text-xs text-amber-700 text-center mb-3">請登入 Google 以儲存您的進度至雲端</p>
+                      <button onClick={handleLogin} className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-sm font-bold py-2 px-4 rounded-lg shadow-sm flex items-center justify-center transition-colors">
+                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-4 h-4 mr-2" />
+                        登入
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 px-4 pb-4 space-y-1">
+                  {STEPS.map((step, index) => {
+                    const isActive = currentStep === index;
+                    return (
+                      <button
+                        key={step.id}
+                        onClick={() => setCurrentStep(index)}
+                        className={`w-full flex items-center px-4 py-3 rounded-xl transition-all text-left cursor-pointer hover:bg-slate-50 ${
+                          isActive 
+                            ? 'bg-emerald-50 text-emerald-700 font-semibold shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-50' 
+                            : 'text-slate-600'
+                        }`}
+                      >
+                        <div className={`mr-3 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                          <i className={`${step.icon} text-sm`}></i>
+                        </div>
+                        <span className="text-sm flex-1">{step.title}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                
+                <div className="p-4 border-t border-slate-100 space-y-2">
+                  <button 
+                    onClick={() => setShowResetModal(true)}
+                    className="w-full flex items-center justify-center px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium mt-2"
+                  >
+                    <i className="fas fa-trash mr-2"></i> 清除所有紀錄
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col h-screen overflow-y-auto relative print:h-auto print:overflow-visible">
+                
+                <div className="md:hidden bg-white border-b border-slate-200 p-4 sticky top-0 z-10 flex justify-between items-center shadow-sm print:hidden">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-slate-700 text-sm truncate">{STEPS[currentStep].title}</span>
+                      <span className="text-xs text-slate-400 font-medium ml-2">{currentStep + 1} / {STEPS.length}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5">
+                      <div 
+                        className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+                        style={{ width: `${((currentStep) / (STEPS.length - 1)) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`fixed top-6 right-6 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg flex items-center transition-all duration-300 z-50 print:hidden ${showSaveToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
+                  <i className="fas fa-cloud-upload-alt text-emerald-400 mr-2"></i> <span className="text-sm font-medium">已同步至雲端</span>
+                </div>
+
+                <div className="flex-1 p-6 md:p-12 lg:px-24">
+                  <div className="max-w-5xl mx-auto">
+                    {currentStep === 0 && renderIntro()}
+                    
+                    {currentStep === 1 && renderQuestionsStep('values', QUESTIONS.values, 'fas fa-handshake-angle', 'bg-blue-100 text-blue-600', '第一部分：探索您的價值觀', '這將協助 AI 了解您在乎什麼，不喜歡什麼。')}
+                    {currentStep === 2 && renderQuestionsStep('talents', QUESTIONS.talents, 'fas fa-wand-magic-sparkles', 'bg-purple-100 text-purple-600', '第二部分：挖掘天賦與才能', '這部分將釐清您做什麼事最順手、最有成就感。')}
+                    {currentStep === 3 && renderQuestionsStep('dreams', QUESTIONS.dreams, 'fas fa-bullseye', 'bg-amber-100 text-amber-600', '第三部分：描繪您的夢想', '拋開現實限制，找出能讓您充滿熱情的事物。')}
+                    
+                    {currentStep === 4 && renderAIInteraction('aiValues', '第一階段分析：提煉核心價值觀', '點擊「直接 AI 生成」，或複製下方提示詞貼給 ChatGPT。', PROMPT_TEMPLATES.aiValues(answers), 'aiValues')}
+                    {currentStep === 5 && renderAIInteraction('aiManual', '第二階段分析：製作個人使用說明書', '讓 AI 幫你歸納核心優勢與發展機遇。', PROMPT_TEMPLATES.aiManual(answers), 'aiManual')}
+                    {currentStep === 6 && renderAIInteraction('aiJobs', '第三階段分析：10 種職業建議', '結合您的價值觀與天賦，讓 AI 推薦最合適的職業。', PROMPT_TEMPLATES.aiJobs(gptResults), 'aiJobs')}
+                    {currentStep === 7 && renderAIInteraction('aiDreams', '第四階段分析：推測可能志業', '不用考慮金錢時，您的熱情在哪裡？', PROMPT_TEMPLATES.aiDreams(answers), 'aiDreams')}
+                    {currentStep === 8 && renderAIInteraction('aiBusiness', '第五階段分析：3 種事業建議', '以生涯為跨度，綜合分析最適合您發展的事業。', PROMPT_TEMPLATES.aiBusiness(gptResults), 'aiBusiness')}
+
+                    {currentStep === 9 && renderFinalReport()}
+                  </div>
+                </div>
+              </div>
+
+              {showResetModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                  <div className="bg-white rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center text-red-500 mb-4">
+                      <div className="bg-red-100 p-3 rounded-full mr-4">
+                        <i className="fas fa-exclamation-triangle text-2xl"></i>
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800">確定重新開始？</h3>
+                    </div>
+                    <p className="text-slate-600 mb-8 leading-relaxed">
+                      這將會清除雲端上目前<span className="font-bold text-slate-800">所有</span>的問題解答與 AI 分析紀錄。此動作無法復原。
+                    </p>
+                    <div className="flex justify-end space-x-3">
+                      <button 
+                        onClick={() => setShowResetModal(false)} 
+                        className="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-medium transition-colors"
+                      >
+                        取消
+                      </button>
+                      <button 
+                        onClick={confirmReset} 
+                        className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-colors shadow-sm"
+                      >
+                        確定清除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
